@@ -42,6 +42,11 @@ module_paths.map! do |path|
 end
 
 Vagrant.configure("2") do |config|
+
+	# Make sure Puppet is installed
+	config.vm.provision :shell,
+		inline: "sudo apt-get update -y && sudo apt-get install puppet -y"
+
 	# Store the current version of Vagrant for use in conditionals when dealing
 	# with possible backward compatible issues.
 	vagrant_version = Vagrant::VERSION.sub(/^v/, '')
@@ -62,6 +67,21 @@ Vagrant.configure("2") do |config|
 	# Before any other provisioning, ensure that we're up-to-date
 	config.vm.provision :shell, :path => "puppet/preprovision.sh"
 
+	config.vm.provider :digital_ocean do |provider, override|
+		override.ssh.private_key_path = '~/.ssh/id_rsa'
+		override.vm.box_url = 'https://github.com/smdahlen/vagrant-digitalocean/raw/master/box/digital_ocean.box'
+
+		provider.client_id = 'YOUR_DIGITALOCEAN_CLIENT_ID'
+		provider.api_key = 'YOUR_DIGITALOCEAN_API_KEY'
+
+	  end
+
+	config.vm.provider :digital_ocean do |provider|
+		provider.image = 'Ubuntu 12.10 x32'
+		provider.region = 'Singapore 1'
+		provider.size = '512MB'
+	end
+
 	# Provision our setup with Puppet
 	config.vm.provision :puppet do |puppet|
 		puppet.manifests_path = "puppet/manifests"
@@ -73,7 +93,7 @@ Vagrant.configure("2") do |config|
 		module_paths.map! { |rel_path| "/vagrant/" + rel_path }
 		puppet.options = "--modulepath " +  module_paths.join( ':' ).inspect
 
-		#puppet.options = "--verbose --debug"
+		puppet.options = "--verbose --debug"
 	end
 
 	# Ensure that WordPress can install/update plugins, themes and core
